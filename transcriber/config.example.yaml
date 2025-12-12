@@ -1,0 +1,37 @@
+# Local Loop Transcriber Configuration
+# Copy this file to config.yaml and fill in your values
+
+# Google Drive Configuration
+google_drive:
+  folder_id: "YOUR_GOOGLE_DRIVE_FOLDER_ID"  # The folder where iOS app uploads audio
+
+# Paths
+paths:
+  work_dir: "/tmp/localloop"                          # Temporary download directory
+  output_dir: "/path/to/your/notes/Transcripts"       # Where transcripts are saved
+
+# Recording info (matches iOS app settings)
+recording:
+  chunk_minutes: 10
+
+# Transcription context (helps Gemini with accuracy)
+transcription:
+  speaker_name: "Speaker"                             # Your name
+  common_names: ""                                    # e.g., "John, Jane, Bob" - people you talk to
+  domain_context: ""                                  # e.g., "medical terms, project names"
+
+# Gemini API
+gemini:
+  api_key: "YOUR_GEMINI_API_KEY"                      # Get from https://aistudio.google.com
+  model: "gemini-2.0-flash"
+  temperature: 0.2                                    # Low for accuracy
+
+# Voice Activity Detection
+vad:
+  enabled: true                                       # Skip silent audio chunks
+  threshold: 0.5                                      # Speech detection sensitivity (0.0-1.0)
+  min_speech_duration_ms: 250                         # Minimum speech duration to consider
+
+# Logging
+logging:
+  level: "INFO"                                       # DEBUG, INFO, WARNING, ERROR
