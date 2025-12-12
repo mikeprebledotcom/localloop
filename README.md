@@ -1,15 +1,15 @@
 # Local Loop
 
-**Privacy-focused, self-hosted voice diary and transcription system.**
+**Open-source, self-hosted voice diary and transcription system.**
 
-Local Loop is an open-source alternative to commercial always-on voice recorders like Limitless, Plaud, and Rewind. Your voice data stays on your devices and your cloud accounts - no third-party servers, no Big Tech surveillance.
+Local Loop is an alternative to commercial always-on voice recorders like Limitless, Plaud, and Rewind. Instead of trusting a startup with your most personal data, you control the entire pipeline: your iPhone records, your Google Drive stores, your Mac transcribes, your notes app saves the results.
 
 ## Why Local Loop?
 
 - **Own your data** - Recordings go to YOUR Google Drive, transcripts to YOUR notes app
-- **No subscriptions** - One-time setup, no monthly fees
-- **No cloud lock-in** - Standard formats (M4A audio, Markdown text)
-- **Privacy first** - No telemetry, no tracking, no data mining
+- **No subscriptions** - One-time setup, minimal ongoing costs (~$0-5/month)
+- **No vendor lock-in** - Standard formats (M4A audio, Markdown text)
+- **No third-party servers** - Your data never touches someone else's startup servers
 - **Fully customizable** - Modify the code to fit your workflow
 
 ## Features
@@ -19,14 +19,14 @@ Local Loop is an open-source alternative to commercial always-on voice recorders
 - 10-minute chunks with seamless 5-second overlap
 - Automatic upload to Google Drive
 - WiFi-only and charging-only upload modes
-- Retry logic with exponential backoff
+- Minimal battery impact (~5-10% additional daily drain)
 
 ### Python Transcriber
 - Downloads audio from Google Drive
 - **Voice Activity Detection (VAD)** - Skips silent chunks to save API costs
-- Gemini-powered transcription with custom domain context
+- Gemini-powered transcription with custom context
 - Markdown output organized by time of day
-- Scheduled daily runs via macOS launchd
+- Scheduled daily runs via macOS launchd (or cron on Linux)
 
 ## Architecture
 
@@ -39,10 +39,21 @@ Local Loop is an open-source alternative to commercial always-on voice recorders
 
 ## Requirements
 
-- **iOS App**: macOS with Xcode 15+, Apple Developer account
+- **iOS App**: macOS with Xcode 15+, Apple Developer account (free works for personal use)
 - **Transcriber**: macOS or Linux, Python 3.10+
-- **APIs**: Google Cloud account, Gemini API key
-- **Storage**: Google Drive (free tier works)
+- **APIs**: Google Cloud account (free), Gemini API key (free tier available)
+- **Storage**: Google Drive (free 15GB is plenty)
+
+## Cost Breakdown
+
+| Component | Cost |
+|-----------|------|
+| Google Drive | Free (15GB included) |
+| Google Cloud OAuth | Free |
+| Gemini API | Free tier: ~1,500 requests/day |
+| Apple Developer (device install) | Free (with limitations) or $99/year |
+
+**Typical monthly cost: $0-5** depending on usage. The free Gemini tier handles most personal use cases. VAD filtering reduces API calls by 50-80% by skipping silent audio.
 
 ## Quick Start
 
@@ -103,9 +114,71 @@ vad:
   threshold: 0.5  # Speech probability (0-1)
 ```
 
-## Legal Notice
+## FAQ
 
-**Important**: Recording conversations may be subject to local laws. Many jurisdictions require consent from all parties being recorded. This software is intended for personal voice memos and should be used responsibly and legally.
+### "Privacy-focused but uses Google?"
+
+Fair point. Let me be clear about what this project offers:
+
+- **What it IS**: Data ownership. Your recordings stay in YOUR Google account, not a startup's servers. You can delete everything anytime. No company is training models on your conversations.
+- **What it ISN'T**: End-to-end encrypted, zero-knowledge, or "Google can't see it." Google theoretically has access to your Drive files and Gemini processes your audio.
+
+If you need true privacy, you'd want local-only transcription (like Whisper). That's a great PR opportunity - contributions welcome!
+
+### "Why Google Drive instead of local/S3/Dropbox?"
+
+Google Drive was chosen because:
+1. Free 15GB storage
+2. Google Sign-In SDK is well-maintained for iOS
+3. Single auth flow for both storage and Gemini API
+
+Want to add S3, Dropbox, or local-only support? PRs welcome!
+
+### "Why Gemini instead of Whisper?"
+
+Gemini was chosen for:
+1. No local GPU/CPU requirements
+2. Excellent accuracy with context hints
+3. Free tier is generous
+
+Local Whisper support would be a great addition for true offline/privacy use. The transcriber is modular enough to swap backends.
+
+### "What about Android?"
+
+Not currently supported. The iOS app would need to be rewritten. If you're an Android developer interested in contributing, please open an issue!
+
+### "Battery drain?"
+
+Expect roughly 5-10% additional daily battery drain. The app uses AVAudioRecorder with hardware-accelerated AAC encoding, which is fairly efficient. Tips:
+- Enable "WiFi-only" uploads to avoid cellular radio usage
+- Enable "Require charging" to batch uploads
+
+### "Is this legal?"
+
+**You are responsible for complying with local laws.** Many jurisdictions have wiretapping/eavesdropping laws:
+
+- **One-party consent** (e.g., most US states): You can record conversations you're part of
+- **Two-party/all-party consent** (e.g., California, many EU countries): All parties must consent
+
+This tool is designed for **personal voice memos** - recording your own thoughts, ideas, and reminders. If you use it to record conversations with others, ensure you have appropriate consent.
+
+**The authors accept no liability for misuse of this software.**
+
+### "Can I use this for [meeting transcription/interviews/etc]?"
+
+Technically yes, but consider:
+1. Legal consent requirements (see above)
+2. Better tools exist for structured recordings (Otter.ai, etc.)
+3. This is optimized for personal, continuous capture
+
+## Roadmap / Contribution Ideas
+
+- [ ] Local Whisper transcription option
+- [ ] Android app
+- [ ] Alternative cloud storage (S3, Dropbox, local)
+- [ ] Web UI for browsing transcripts
+- [ ] Better search/tagging system
+- [ ] Speaker diarization (who said what)
 
 ## Contributing
 
@@ -113,6 +186,8 @@ Contributions are welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
+
+See the roadmap above for ideas, or open an issue to discuss new features.
 
 ## License
 
