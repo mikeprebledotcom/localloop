@@ -10,19 +10,29 @@ paths:
   work_dir: "/tmp/localloop"                          # Temporary download directory
   output_dir: "/path/to/your/notes/Transcripts"       # Where transcripts are saved
 
-# Transcription context (helps Gemini with accuracy)
+# Transcription settings
 transcription:
-  speaker_name: "Speaker"                             # Your name
-  common_names: ""                                    # e.g., "John, Jane, Bob" - people you talk to
+  backend: "gemini"                                   # "gemini" (cloud) or "whisper" (local)
+  speaker_name: "Speaker"                             # Your name for transcript output
+  common_names: ""                                    # e.g., "John, Jane, Bob" - helps Gemini accuracy
   domain_context: ""                                  # e.g., "medical terms, project names"
 
-# Gemini API
+# Gemini API (required if backend: gemini)
 gemini:
   api_key: "YOUR_GEMINI_API_KEY"                      # Get from https://aistudio.google.com
   model: "gemini-2.0-flash"
   temperature: 0.2                                    # Low for accuracy
 
-# Voice Activity Detection
+# Whisper settings (required if backend: whisper)
+# First, install: pip install faster-whisper
+whisper:
+  model: "base"                                       # tiny, base, small, medium, large-v3
+  device: "auto"                                      # auto, cpu, cuda
+  compute_type: "auto"                                # auto, int8, float16, float32
+  language: "en"                                      # Language code (en, es, fr, etc.)
+
+# Voice Activity Detection (only used with Gemini backend)
+# Whisper has built-in VAD, so this is skipped when using Whisper
 vad:
   enabled: true                                       # Skip silent audio chunks
   threshold: 0.5                                      # Speech detection sensitivity (0.0-1.0)

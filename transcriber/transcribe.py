@@ -2,7 +2,7 @@
 """
 Local Loop Transcription Pipeline
 
-Downloads audio from Google Drive, transcribes with Gemini,
+Downloads audio from Google Drive, transcribes with Gemini or Whisper,
 outputs formatted markdown.
 
 https://github.com/mikeprebledotcom/localloop
@@ -21,8 +21,6 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-
-import google.generativeai as genai
 
 # Script directory for relative paths
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -44,8 +42,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# VAD model cache
+# Model caches
 _vad_model = None
+_whisper_model = None
 
 
 def get_vad_model():
@@ -93,6 +92,110 @@ def detect_speech(audio_path: Path) -> tuple[bool, float]:
 
         speech_duration = sum(ts["end"] - ts["start"] for ts in speech_timestamps)
         return len(speech_timestamps) > 0, speech_duration
+    finally:
+        os.unlink(tmp_path)
+
+
+def get_whisper_model():
+    """Load and cache Whisper model."""
+    global _whisper_model
+    if _whisper_model is None:
+        from faster_whisper import WhisperModel
+
+        whisper_config = CONFIG.get("whisper", {})
+        model_size = whisper_config.get("model", "base")
+        device = whisper_config.get("device", "auto")
+        compute_type = whisper_config.get("compute_type", "auto")
+
+        logger.info(f"Loading Whisper model: {model_size}")
+
+        # Auto-detect best device
+        if device == "auto":
+            import torch
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            if device == "cpu" and compute_type == "auto":
+                compute_type = "int8"
+            elif compute_type == "auto":
+                compute_type = "float16"
+
+        _whisper_model = WhisperModel(model_size, device=device, compute_type=compute_type)
+        logger.info(f"Whisper model loaded on {device} with {compute_type}")
+
+    return _whisper_model
+
+
+def transcribe_with_whisper(audio_path: Path, start_time: int, date: datetime) -> list[dict]:
+    """
+    Transcribe a single audio file with local Whisper.
+    Returns list of {timestamp: str, text: str} entries.
+    """
+    import tempfile
+    from pydub import AudioSegment
+
+    whisper_config = CONFIG.get("whisper", {})
+    language = whisper_config.get("language", "en")
+
+    # Convert M4A to WAV for Whisper
+    audio = AudioSegment.from_file(str(audio_path), format="m4a")
+    audio = audio.set_frame_rate(16000).set_channels(1)
+
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp_path = tmp.name
+        audio.export(tmp_path, format="wav")
+
+    try:
+        model = get_whisper_model()
+
+        # Transcribe
+        segments_iter, info = model.transcribe(
+            tmp_path,
+            language=language,
+            beam_size=5,
+            vad_filter=True,  # Use Whisper's built-in VAD
+            vad_parameters=dict(
+                min_silence_duration_ms=500,
+                speech_pad_ms=200,
+            )
+        )
+
+        # Collect segments
+        segments = []
+        current_text = []
+        last_end = 0
+
+        for segment in segments_iter:
+            # Detect significant pauses (>3 seconds) to create breaks
+            if segment.start - last_end > 3.0 and current_text:
+                # Save accumulated text as a segment
+                seg_time = start_time + int(last_end)
+                full_text = " ".join(current_text).strip()
+                if len(full_text) > 10:
+                    segments.append({
+                        "timestamp": format_time_12h(seg_time, date),
+                        "text": full_text,
+                        "seconds": seg_time
+                    })
+                current_text = []
+
+            current_text.append(segment.text.strip())
+            last_end = segment.end
+
+        # Don't forget the last segment
+        if current_text:
+            seg_time = start_time + int(last_end - len(" ".join(current_text).split()) * 0.3)
+            full_text = " ".join(current_text).strip()
+            if len(full_text) > 10:
+                segments.append({
+                    "timestamp": format_time_12h(max(start_time, seg_time), date),
+                    "text": full_text,
+                    "seconds": max(start_time, seg_time)
+                })
+
+        return segments
+
+    except Exception as e:
+        logger.error(f"Whisper transcription failed: {e}")
+        return []
     finally:
         os.unlink(tmp_path)
 
@@ -212,6 +315,8 @@ def transcribe_with_gemini(audio_path: Path, start_time: int, date: datetime) ->
     Transcribe a single audio file with Gemini.
     Returns list of {timestamp: str, text: str} entries.
     """
+    import google.generativeai as genai
+
     time_str = format_time_12h(start_time, date)
 
     # Build context from config
@@ -344,12 +449,25 @@ def main():
     logger.info("=" * 50)
     logger.info("Starting Local Loop transcription")
 
-    # Configure Gemini
-    api_key = CONFIG.get("gemini", {}).get("api_key")
-    if not api_key:
-        logger.error("Gemini API key not configured")
+    # Determine transcription backend
+    backend = CONFIG.get("transcription", {}).get("backend", "gemini")
+    logger.info(f"Using transcription backend: {backend}")
+
+    # Configure backend
+    if backend == "gemini":
+        import google.generativeai as genai
+        api_key = CONFIG.get("gemini", {}).get("api_key")
+        if not api_key:
+            logger.error("Gemini API key not configured")
+            sys.exit(1)
+        genai.configure(api_key=api_key)
+        transcribe_func = transcribe_with_gemini
+    elif backend == "whisper":
+        # Whisper loads model on first use
+        transcribe_func = transcribe_with_whisper
+    else:
+        logger.error(f"Unknown transcription backend: {backend}")
         sys.exit(1)
-    genai.configure(api_key=api_key)
 
     try:
         service = get_drive_service()
@@ -386,8 +504,8 @@ def main():
             all_segments = []
 
             for audio_path, base_seconds in sorted(file_list, key=lambda x: x[1]):
-                # Check for speech using VAD
-                if CONFIG.get("vad", {}).get("enabled", False):
+                # Check for speech using VAD (skip for whisper which has built-in VAD)
+                if backend != "whisper" and CONFIG.get("vad", {}).get("enabled", False):
                     has_speech, speech_duration = detect_speech(audio_path)
                     if not has_speech:
                         time_str = format_time_12h(base_seconds, date)
@@ -397,7 +515,7 @@ def main():
 
                 logger.info(f"  Transcribing: {audio_path.name}")
 
-                segments = transcribe_with_gemini(audio_path, base_seconds, date)
+                segments = transcribe_func(audio_path, base_seconds, date)
                 all_segments.extend(segments)
 
                 logger.info(f"    Got {len(segments)} segment(s)")

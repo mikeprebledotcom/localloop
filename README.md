@@ -114,6 +114,51 @@ vad:
   threshold: 0.5  # Speech probability (0-1)
 ```
 
+## Transcription Backends
+
+Local Loop supports two transcription backends:
+
+### Gemini (Default)
+Cloud-based transcription using Google's Gemini API.
+
+```yaml
+transcription:
+  backend: "gemini"
+```
+
+**Pros:** No local compute needed, context hints improve accuracy, generous free tier
+**Cons:** Audio is sent to Google for processing
+
+### Whisper (Local)
+100% local transcription using OpenAI's Whisper model via [faster-whisper](https://github.com/SYSTRAN/faster-whisper).
+
+```bash
+# Install the optional dependency
+pip install faster-whisper
+```
+
+```yaml
+transcription:
+  backend: "whisper"
+
+whisper:
+  model: "base"      # tiny (fast), base, small, medium, large-v3 (accurate)
+  device: "auto"     # auto, cpu, cuda
+  language: "en"
+```
+
+**Model sizes:**
+| Model | Size | Speed | Accuracy |
+|-------|------|-------|----------|
+| tiny | 39 MB | ~10x realtime | Good |
+| base | 74 MB | ~7x realtime | Better |
+| small | 244 MB | ~4x realtime | Great |
+| medium | 769 MB | ~2x realtime | Excellent |
+| large-v3 | 1.5 GB | ~1x realtime | Best |
+
+**Pros:** Completely private, no API costs, works offline
+**Cons:** Requires CPU/GPU resources, slower than cloud, no context hints
+
 ## FAQ
 
 ### "Privacy-focused but uses Google?"
@@ -123,7 +168,7 @@ Fair point. Let me be clear about what this project offers:
 - **What it IS**: Data ownership. Your recordings stay in YOUR Google account, not a startup's servers. You can delete everything anytime. No company is training models on your conversations.
 - **What it ISN'T**: End-to-end encrypted, zero-knowledge, or "Google can't see it." Google theoretically has access to your Drive files and Gemini processes your audio.
 
-If you need true privacy, you'd want local-only transcription (like Whisper). That's a great PR opportunity - contributions welcome!
+If you need true privacy, use the **local Whisper backend** - your audio never leaves your machine. See [Transcription Backends](#transcription-backends) below.
 
 ### "Why Google Drive instead of local/S3/Dropbox?"
 
@@ -136,12 +181,14 @@ Want to add S3, Dropbox, or local-only support? PRs welcome!
 
 ### "Why Gemini instead of Whisper?"
 
-Gemini was chosen for:
-1. No local GPU/CPU requirements
-2. Excellent accuracy with context hints
-3. Free tier is generous
+Both are supported! Choose based on your priorities:
 
-Local Whisper support would be a great addition for true offline/privacy use. The transcriber is modular enough to swap backends.
+| Backend | Pros | Cons |
+|---------|------|------|
+| **Gemini** (default) | No local compute, context hints improve accuracy, free tier | Audio sent to Google |
+| **Whisper** (local) | 100% private, no API costs, works offline | Requires CPU/GPU, slower |
+
+See [Transcription Backends](#transcription-backends) for setup instructions.
 
 ### "What about Android?"
 
@@ -173,7 +220,7 @@ Technically yes, but consider:
 
 ## Roadmap / Contribution Ideas
 
-- [ ] Local Whisper transcription option
+- [x] Local Whisper transcription option
 - [ ] Android app
 - [ ] Alternative cloud storage (S3, Dropbox, local)
 - [ ] Web UI for browsing transcripts
@@ -196,6 +243,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 - [Silero VAD](https://github.com/snakers4/silero-vad) - Voice Activity Detection
+- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) - Local Whisper transcription
 - [Google Sign-In for iOS](https://github.com/google/GoogleSignIn-iOS)
 - [Google API Client for REST](https://github.com/google/google-api-objectivec-client-for-rest)
 - [Gemini API](https://ai.google.dev/)
