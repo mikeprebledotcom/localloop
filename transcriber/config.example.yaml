@@ -20,7 +20,7 @@ transcription:
 # Gemini API (required if backend: gemini)
 gemini:
   api_key: "YOUR_GEMINI_API_KEY"                      # Get from https://aistudio.google.com
-  model: "gemini-2.5-flash"
+  model: "gemini-3-pro-preview"
   temperature: 0.2                                    # Low for accuracy
 
 # Whisper settings (required if backend: whisper)

@@ -370,7 +370,7 @@ Third segment of conversation."""
             logger.error(f"Gemini upload failed for {audio_path.name}")
             return []
 
-        model = genai.GenerativeModel(CONFIG.get("gemini", {}).get("model", "gemini-2.5-flash"))
+        model = genai.GenerativeModel(CONFIG.get("gemini", {}).get("model", "gemini-3-pro-preview"))
         generation_config = genai.types.GenerationConfig(
             temperature=CONFIG.get("gemini", {}).get("temperature", 0.2)
         )
