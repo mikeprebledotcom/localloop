@@ -10,10 +10,6 @@ paths:
   work_dir: "/tmp/localloop"                          # Temporary download directory
   output_dir: "/path/to/your/notes/Transcripts"       # Where transcripts are saved
 
-# Recording info (matches iOS app settings)
-recording:
-  chunk_minutes: 10
-
 # Transcription context (helps Gemini with accuracy)
 transcription:
   speaker_name: "Speaker"                             # Your name

@@ -81,7 +81,7 @@ Copy `transcriber/config.example.yaml` to `transcriber/config.yaml` and fill in:
 Transcripts are saved as Markdown files organized by time of day:
 
 ```markdown
-# Phone Recording - 2025-01-15
+# Recording - 2025-01-15
 
 ## Morning
 

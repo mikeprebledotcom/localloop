@@ -214,8 +214,8 @@ paths:
   output_dir: "/path/to/your/notes/Transcripts"  # Where transcripts go
 
 transcription:
-  speaker_name: "YourName"  # Your name for transcripts
-  common_names: "John, Jane"  # People you talk to often (optional)
+  speaker_name: "Speaker"  # Your name for transcripts
+  common_names: ""  # People you talk to often (optional)
   domain_context: ""  # Work terms, proper nouns (optional)
 
 gemini:
